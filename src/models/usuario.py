@@ -20,7 +20,7 @@ class Usuario(Persona):
     aplicar validaciones al actualizar el limite permitido.
     """
 
-    def __init__(self, id_persona: int, nombre: str, max_prestamos: int = 3) -> None:
+    def __init__(self, id_persona: str | int, nombre: str, max_prestamos: int = 3) -> None:
         """Crea un usuario con limite maximo de prestamos.
 
         Args:

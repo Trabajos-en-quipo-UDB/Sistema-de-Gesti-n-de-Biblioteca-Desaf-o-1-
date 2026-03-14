@@ -93,8 +93,8 @@ class MainGUI(BibliotecaApp):
             return
 
         # Matriz -> conteos de libros prestados y actividad de usuarios.
-        conteo_libros = Counter(int(fila[0]) for fila in matriz)
-        conteo_usuarios = Counter(int(fila[1]) for fila in matriz)
+        conteo_libros = Counter(str(fila[0]) for fila in matriz)
+        conteo_usuarios = Counter(str(fila[1]) for fila in matriz)
 
         top_libros = conteo_libros.most_common(5)
         top_usuarios = conteo_usuarios.most_common(5)

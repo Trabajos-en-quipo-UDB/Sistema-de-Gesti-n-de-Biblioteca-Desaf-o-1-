@@ -10,13 +10,19 @@ Polimorfismo:
 Implementa `obtener_detalle()` con una salida especializada para objetos Libro.
 """
 
+from __future__ import annotations
+
+import re
+
 class Libro:
     """Entidad de libro con metadatos bibliograficos y estado de circulacion."""
 
     ESTADO_DISPONIBLE = "disponible"
     ESTADO_PRESTADO = "prestado"
 
-    def __init__(self, id_libro: int, titulo: str, autor: str, anio: int) -> None:
+    _ID_REGEX = re.compile(r"^(?=.*[A-Za-z0-9])[A-Za-z0-9-]+$")
+
+    def __init__(self, id_libro: str | int, titulo: str, autor: str, anio: int) -> None:
         """Inicializa un libro en estado disponible por defecto.
 
         Args:
@@ -25,23 +31,26 @@ class Libro:
             autor: Autor o autora de la obra.
             anio: Anio de publicacion.
         """
-        self.__id = id_libro
+        self.id = id_libro
         self.__titulo = titulo
         self.__autor = autor
         self.__anio = anio
         self.__estado = self.ESTADO_DISPONIBLE
 
     @property
-    def id(self) -> int:
+    def id(self) -> str:
         """Retorna el identificador encapsulado del libro."""
         return self.__id
 
     @id.setter
-    def id(self, value: int) -> None:
-        """Actualiza el ID validando que sea positivo."""
-        if value <= 0:
-            raise ValueError("El id del libro debe ser mayor que 0.")
-        self.__id = value
+    def id(self, value: str | int) -> None:
+        """Actualiza el ID validando formato (letras, numeros y guion '-')."""
+        texto = str(value).strip()
+        if not texto:
+            raise ValueError("El id del libro es obligatorio.")
+        if not self._ID_REGEX.fullmatch(texto):
+            raise ValueError("ID invalido. Use letras, numeros y guion '-'. Ej: RO-253385")
+        self.__id = texto
 
     @property
     def titulo(self) -> str:

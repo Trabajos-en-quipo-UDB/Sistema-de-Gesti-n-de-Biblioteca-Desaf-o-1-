@@ -32,6 +32,10 @@ def guardar_json(ruta: Path, datos: Any) -> None:
 class BibliotecaCRUD:
     """Servicio CRUD para usuarios y libros con persistencia automatica en JSON."""
 
+    @staticmethod
+    def _normalizar_id(valor: str | int) -> str:
+        return str(valor).strip()
+
     def __init__(
         self,
         ruta_usuarios: str = "usuarios.json",
@@ -44,7 +48,7 @@ class BibliotecaCRUD:
         self._ruta_libros = raiz / ruta_libros
 
         # Requisito: usuarios como diccionario con ID como clave.
-        self.usuarios: dict[int, Usuario] = {}
+        self.usuarios: dict[str, Usuario] = {}
         # Requisito: libros como lista.
         self.libros: list[Libro] = []
 
@@ -67,9 +71,9 @@ class BibliotecaCRUD:
         self.usuarios[usuario.id] = usuario
         self._guardar_usuarios()
 
-    def obtener_usuario(self, id_usuario: int) -> Usuario | None:
+    def obtener_usuario(self, id_usuario: str | int) -> Usuario | None:
         """Obtiene un usuario por su ID o None si no existe."""
-        return self.usuarios.get(id_usuario)
+        return self.usuarios.get(self._normalizar_id(id_usuario))
 
     def listar_usuarios(self) -> list[Usuario]:
         """Retorna todos los usuarios en una lista para iteracion o respuesta API."""
@@ -77,14 +81,15 @@ class BibliotecaCRUD:
 
     def actualizar_usuario(
         self,
-        id_usuario: int,
+        id_usuario: str | int,
         nombre: str | None = None,
         max_prestamos: int | None = None,
     ) -> Usuario:
         """Actualiza campos de un usuario existente y guarda automaticamente."""
-        usuario = self.obtener_usuario(id_usuario)
+        id_usuario_norm = self._normalizar_id(id_usuario)
+        usuario = self.obtener_usuario(id_usuario_norm)
         if usuario is None:
-            raise ValueError(f"Usuario {id_usuario} no encontrado.")
+            raise ValueError(f"Usuario {id_usuario_norm} no encontrado.")
 
         if nombre is not None:
             usuario.nombre = nombre
@@ -94,13 +99,14 @@ class BibliotecaCRUD:
         self._guardar_usuarios()
         return usuario
 
-    def eliminar_usuario(self, id_usuario: int) -> Usuario:
+    def eliminar_usuario(self, id_usuario: str | int) -> Usuario:
         """Elimina un usuario por ID y persiste el cambio."""
-        usuario = self.obtener_usuario(id_usuario)
+        id_usuario_norm = self._normalizar_id(id_usuario)
+        usuario = self.obtener_usuario(id_usuario_norm)
         if usuario is None:
-            raise ValueError(f"Usuario {id_usuario} no encontrado.")
+            raise ValueError(f"Usuario {id_usuario_norm} no encontrado.")
 
-        usuario_eliminado = self.usuarios.pop(id_usuario)
+        usuario_eliminado = self.usuarios.pop(id_usuario_norm)
         self._guardar_usuarios()
         return usuario_eliminado
 
@@ -111,10 +117,11 @@ class BibliotecaCRUD:
         self.libros.append(libro)
         self._guardar_libros()
 
-    def obtener_libro(self, id_libro: int) -> Libro | None:
+    def obtener_libro(self, id_libro: str | int) -> Libro | None:
         """Busca y devuelve un libro por ID en la lista de libros."""
+        id_libro_norm = self._normalizar_id(id_libro)
         for libro in self.libros:
-            if libro.id == id_libro:
+            if libro.id == id_libro_norm:
                 return libro
         return None
 
@@ -124,16 +131,17 @@ class BibliotecaCRUD:
 
     def actualizar_libro(
         self,
-        id_libro: int,
+        id_libro: str | int,
         titulo: str | None = None,
         autor: str | None = None,
         anio: int | None = None,
         estado: str | None = None,
     ) -> Libro:
         """Actualiza datos de un libro y guarda automaticamente."""
-        libro = self.obtener_libro(id_libro)
+        id_libro_norm = self._normalizar_id(id_libro)
+        libro = self.obtener_libro(id_libro_norm)
         if libro is None:
-            raise ValueError(f"Libro {id_libro} no encontrado.")
+            raise ValueError(f"Libro {id_libro_norm} no encontrado.")
 
         if titulo is not None:
             libro.titulo = titulo
@@ -147,17 +155,18 @@ class BibliotecaCRUD:
         self._guardar_libros()
         return libro
 
-    def eliminar_libro(self, id_libro: int) -> Libro:
+    def eliminar_libro(self, id_libro: str | int) -> Libro:
         """Elimina un libro de la lista por ID y persiste el cambio."""
-        indice = self._indice_libro(id_libro)
+        id_libro_norm = self._normalizar_id(id_libro)
+        indice = self._indice_libro(id_libro_norm)
         if indice is None:
-            raise ValueError(f"Libro {id_libro} no encontrado.")
+            raise ValueError(f"Libro {id_libro_norm} no encontrado.")
 
         libro_eliminado = self.libros.pop(indice)
         self._guardar_libros()
         return libro_eliminado
 
-    def _indice_libro(self, id_libro: int) -> int | None:
+    def _indice_libro(self, id_libro: str) -> int | None:
         """Devuelve el indice del libro en la lista o None si no existe."""
         for indice, libro in enumerate(self.libros):
             if libro.id == id_libro:
@@ -190,14 +199,14 @@ class BibliotecaCRUD:
         ]
         guardar_json(self._ruta_libros, datos)
 
-    def _cargar_usuarios(self) -> dict[int, Usuario]:
+    def _cargar_usuarios(self) -> dict[str, Usuario]:
         """Reconstruye el diccionario de usuarios desde usuarios.json."""
         datos = cargar_json(self._ruta_usuarios, [])
-        usuarios: dict[int, Usuario] = {}
+        usuarios: dict[str, Usuario] = {}
 
         for item in datos:
             usuario = Usuario(
-                id_persona=int(item["id"]),
+                id_persona=item["id"],
                 nombre=str(item["nombre"]),
                 max_prestamos=int(item.get("max_prestamos", 3)),
             )
@@ -212,7 +221,7 @@ class BibliotecaCRUD:
 
         for item in datos:
             libro = Libro(
-                id_libro=int(item["id"]),
+                id_libro=item["id"],
                 titulo=str(item["titulo"]),
                 autor=str(item["autor"]),
                 anio=int(item["anio"]),

@@ -14,8 +14,8 @@ from services.crud_biblioteca import cargar_json, guardar_json
 class Prestamo:
     """Representa un prestamo individual para reglas de negocio y persistencia."""
 
-    id_libro: int
-    id_usuario: int
+    id_libro: str
+    id_usuario: str
     fecha_prestamo: date
     fecha_devolucion: date | None = None
 
@@ -23,13 +23,17 @@ class Prestamo:
 class GestionPrestamos:
     """Gestiona prestamos de libros, validaciones y persistencia de historial."""
 
+    @staticmethod
+    def _normalizar_id(valor: str | int) -> str:
+        return str(valor).strip()
+
     def __init__(
         self,
         ruta_prestamos: str = "prestamos.json",
         base_dir: Path | None = None,
     ) -> None:
         # Requisito: usuarios en diccionario con el ID como clave.
-        self.usuarios: dict[int, Usuario] = {}
+        self.usuarios: dict[str, Usuario] = {}
         # Requisito: libros en lista.
         self.libros: list[Libro] = []
         # Lista de objetos de prestamo para encapsular la logica de negocio.
@@ -51,25 +55,29 @@ class GestionPrestamos:
             raise ValueError(f"Ya existe un libro con id {libro.id}.")
         self.libros.append(libro)
 
-    def obtener_libro(self, id_libro: int) -> Libro | None:
+    def obtener_libro(self, id_libro: str | int) -> Libro | None:
         """Busca un libro por ID dentro de la lista de libros."""
+        id_libro_norm = self._normalizar_id(id_libro)
         for libro in self.libros:
-            if libro.id == id_libro:
+            if libro.id == id_libro_norm:
                 return libro
         return None
 
-    def prestar_libro(self, id_libro: int, id_usuario: int, fecha_prestamo: date) -> None:
+    def prestar_libro(self, id_libro: str | int, id_usuario: str | int, fecha_prestamo: date) -> None:
         """Registra un prestamo si el libro esta disponible y los IDs existen."""
         if fecha_prestamo is None:
             raise ValueError("La fecha de prestamo es obligatoria.")
 
-        usuario = self.usuarios.get(id_usuario)
-        if usuario is None:
-            raise ValueError(f"Usuario {id_usuario} no encontrado.")
+        id_usuario_norm = self._normalizar_id(id_usuario)
+        id_libro_norm = self._normalizar_id(id_libro)
 
-        libro = self.obtener_libro(id_libro)
+        usuario = self.usuarios.get(id_usuario_norm)
+        if usuario is None:
+            raise ValueError(f"Usuario {id_usuario_norm} no encontrado.")
+
+        libro = self.obtener_libro(id_libro_norm)
         if libro is None:
-            raise ValueError(f"Libro {id_libro} no encontrado.")
+            raise ValueError(f"Libro {id_libro_norm} no encontrado.")
 
         # Validacion critica: no prestar si el libro ya esta prestado.
         if libro.estado == Libro.ESTADO_PRESTADO:
@@ -78,26 +86,27 @@ class GestionPrestamos:
         libro.prestar()
         self._prestamos.append(
             Prestamo(
-                id_libro=id_libro,
-                id_usuario=id_usuario,
+                id_libro=id_libro_norm,
+                id_usuario=id_usuario_norm,
                 fecha_prestamo=fecha_prestamo,
             )
         )
         self._guardar_prestamos()
 
-    def devolver_libro(self, id_libro: int, fecha_devolucion: date) -> None:
+    def devolver_libro(self, id_libro: str | int, fecha_devolucion: date) -> None:
         """Registra devolucion validando orden de fechas y estado del libro."""
         if fecha_devolucion is None:
             raise ValueError("La fecha de devolucion es obligatoria.")
 
-        libro = self.obtener_libro(id_libro)
+        id_libro_norm = self._normalizar_id(id_libro)
+        libro = self.obtener_libro(id_libro_norm)
         if libro is None:
-            raise ValueError(f"Libro {id_libro} no encontrado.")
+            raise ValueError(f"Libro {id_libro_norm} no encontrado.")
 
         if libro.estado != Libro.ESTADO_PRESTADO:
             raise ValueError("No se puede devolver: el libro no esta Prestado.")
 
-        fila_abierta = self._buscar_prestamo_abierto(id_libro)
+        fila_abierta = self._buscar_prestamo_abierto(id_libro_norm)
         if fila_abierta is None:
             raise ValueError("No existe un prestamo activo para ese libro.")
 
@@ -109,24 +118,25 @@ class GestionPrestamos:
         libro.devolver()
         self._guardar_prestamos()
 
-    def estado_actual_libro(self, id_libro: int) -> str:
+    def estado_actual_libro(self, id_libro: str | int) -> str:
         """Devuelve el estado actual de un libro (disponible o prestado)."""
-        libro = self.obtener_libro(id_libro)
+        id_libro_norm = self._normalizar_id(id_libro)
+        libro = self.obtener_libro(id_libro_norm)
         if libro is None:
-            raise ValueError(f"Libro {id_libro} no encontrado.")
+            raise ValueError(f"Libro {id_libro_norm} no encontrado.")
         return libro.estado
 
-    def obtener_historial(self) -> list[list[int | str | None]]:
+    def obtener_historial(self) -> list[list[str | None]]:
         """Retorna una matriz tabular para reportes de prestamos."""
         return self.convertir_prestamos_a_matriz()
 
     def convertir_prestamos_a_matriz(
         self,
         prestamos: list[Prestamo] | None = None,
-    ) -> list[list[int | str | None]]:
+    ) -> list[list[str | None]]:
         """Convierte una lista de objetos Prestamo en matriz para reportes tabulares."""
         origen = prestamos if prestamos is not None else self._prestamos
-        matriz: list[list[int | str | None]] = []
+        matriz: list[list[str | None]] = []
 
         for prestamo in origen:
             matriz.append(
@@ -142,19 +152,19 @@ class GestionPrestamos:
 
         return matriz
 
-    def libros_mas_prestados(self, limite: int = 5) -> list[tuple[int, int]]:
+    def libros_mas_prestados(self, limite: int = 5) -> list[tuple[str, int]]:
         """Retorna ranking de libros por cantidad de prestamos en formato (id_libro, total)."""
         matriz = self.convertir_prestamos_a_matriz()
-        contador = Counter(int(fila[0]) for fila in matriz)
+        contador = Counter(str(fila[0]) for fila in matriz)
         return contador.most_common(limite)
 
-    def usuarios_mas_activos(self, limite: int = 5) -> list[tuple[int, int]]:
+    def usuarios_mas_activos(self, limite: int = 5) -> list[tuple[str, int]]:
         """Retorna ranking de usuarios por cantidad de prestamos en formato (id_usuario, total)."""
         matriz = self.convertir_prestamos_a_matriz()
-        contador = Counter(int(fila[1]) for fila in matriz)
+        contador = Counter(str(fila[1]) for fila in matriz)
         return contador.most_common(limite)
 
-    def _buscar_prestamo_abierto(self, id_libro: int) -> Prestamo | None:
+    def _buscar_prestamo_abierto(self, id_libro: str) -> Prestamo | None:
         """Busca el ultimo prestamo abierto para un libro."""
         for prestamo in reversed(self._prestamos):
             if prestamo.id_libro == id_libro and prestamo.fecha_devolucion is None:
@@ -185,8 +195,8 @@ class GestionPrestamos:
             fecha_devolucion_raw = item.get("fecha_devolucion")
             self._prestamos.append(
                 Prestamo(
-                    id_libro=int(item["id_libro"]),
-                    id_usuario=int(item["id_usuario"]),
+                    id_libro=self._normalizar_id(item["id_libro"]),
+                    id_usuario=self._normalizar_id(item["id_usuario"]),
                     fecha_prestamo=date.fromisoformat(str(item["fecha_prestamo"])),
                     fecha_devolucion=date.fromisoformat(str(fecha_devolucion_raw))
                     if fecha_devolucion_raw

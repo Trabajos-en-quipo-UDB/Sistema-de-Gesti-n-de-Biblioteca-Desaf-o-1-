@@ -7,7 +7,11 @@ Aplica Encapsulamiento mediante atributos privados y usa @property
 para exponer acceso controlado (lectura/escritura con validacion).
 """
 
+from __future__ import annotations
+
 from abc import ABC
+
+import re
 
 
 class Persona(ABC):
@@ -26,18 +30,20 @@ class Persona(ABC):
     sobreescrito por subclases para devolver representaciones especializadas.
     """
 
-    def __init__(self, id_persona: int, nombre: str) -> None:
+    _ID_REGEX = re.compile(r"^(?=.*[A-Za-z0-9])[A-Za-z0-9-]+$")
+
+    def __init__(self, id_persona: str | int, nombre: str) -> None:
         """Inicializa una persona con identificador y nombre validados por setters.
 
         Args:
             id_persona: Identificador unico de la persona.
             nombre: Nombre completo o visible en la aplicacion.
         """
-        self.__id = id_persona
+        self.id = id_persona
         self.__nombre = nombre
 
     @property
-    def id(self) -> int:
+    def id(self) -> str:
         """Obtiene el ID encapsulado de la persona.
 
         @property se usa para exponer lectura segura sin romper el encapsulamiento.
@@ -45,14 +51,14 @@ class Persona(ABC):
         return self.__id
 
     @id.setter
-    def id(self, value: int) -> None:
-        """Actualiza el ID validando que sea un entero positivo.
-
-        Se usa setter para centralizar reglas de integridad de datos.
-        """
-        if value <= 0:
-            raise ValueError("El id debe ser mayor que 0.")
-        self.__id = value
+    def id(self, value: str | int) -> None:
+        """Actualiza el ID validando formato (letras, numeros y guion '-')."""
+        texto = str(value).strip()
+        if not texto:
+            raise ValueError("El id es obligatorio.")
+        if not self._ID_REGEX.fullmatch(texto):
+            raise ValueError("ID invalido. Use letras, numeros y guion '-'. Ej: RO-253385")
+        self.__id = texto
 
     @property
     def nombre(self) -> str:

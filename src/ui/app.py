@@ -18,6 +18,7 @@ Relacion con `ui/main_gui.py`:
 from __future__ import annotations
 
 from datetime import date
+import re
 from tkinter import messagebox, ttk
 
 import customtkinter as ctk
@@ -496,11 +497,25 @@ class BibliotecaApp(ctk.CTk):
         """Convierte texto ISO (YYYY-MM-DD) a fecha para reglas de negocio."""
         return date.fromisoformat(valor.strip())
 
+    @staticmethod
+    def _normalizar_id(valor: str) -> str:
+        return str(valor).strip()
+
+    @staticmethod
+    def _validar_id(valor: str) -> str:
+        texto = BibliotecaApp._normalizar_id(valor)
+        if not texto:
+            raise ValueError("El ID es obligatorio.")
+        if not re.fullmatch(r"^(?=.*[A-Za-z0-9])[A-Za-z0-9-]+$", texto):
+            raise ValueError("ID invalido. Use letras, numeros y guion '-'. Ej: RO-253385")
+        return texto
+
     def crear_libro_ui(self) -> None:
         """Maneja evento de alta de libro y sincroniza vistas."""
         try:
+            id_libro = self._validar_id(self.libro_id_entry.get())
             libro = Libro(
-                id_libro=int(self.libro_id_entry.get().strip()),
+                id_libro=id_libro,
                 titulo=self.libro_titulo_entry.get().strip(),
                 autor=self.libro_autor_entry.get().strip(),
                 anio=int(self.libro_anio_entry.get().strip()),
@@ -519,7 +534,7 @@ class BibliotecaApp(ctk.CTk):
     def actualizar_libro_ui(self) -> None:
         """Maneja evento de actualizacion de libro por ID."""
         try:
-            id_libro = int(self.libro_id_entry.get().strip())
+            id_libro = self._validar_id(self.libro_id_entry.get())
             titulo = self._valor_o_none(self.libro_titulo_entry.get())
             autor = self._valor_o_none(self.libro_autor_entry.get())
             anio = self._valor_o_none(self.libro_anio_entry.get())
@@ -540,7 +555,7 @@ class BibliotecaApp(ctk.CTk):
     def eliminar_libro_ui(self) -> None:
         """Maneja baja de libro por ID."""
         try:
-            id_libro = int(self.libro_id_entry.get().strip())
+            id_libro = self._validar_id(self.libro_id_entry.get())
             self.crud.eliminar_libro(id_libro)
             self._sincronizar_referencias()
             self._refrescar_todo()
@@ -557,7 +572,7 @@ class BibliotecaApp(ctk.CTk):
         """Maneja alta de usuario y actualiza persistencia."""
         try:
             usuario = Usuario(
-                id_persona=int(self.usuario_id_entry.get().strip()),
+                id_persona=self._validar_id(self.usuario_id_entry.get()),
                 nombre=self.usuario_nombre_entry.get().strip(),
                 max_prestamos=int(self.usuario_max_entry.get().strip() or "3"),
             )
@@ -571,7 +586,7 @@ class BibliotecaApp(ctk.CTk):
     def actualizar_usuario_ui(self) -> None:
         """Maneja actualizacion de usuario por ID."""
         try:
-            id_usuario = int(self.usuario_id_entry.get().strip())
+            id_usuario = self._validar_id(self.usuario_id_entry.get())
             nombre = self._valor_o_none(self.usuario_nombre_entry.get())
             max_prestamos = self._valor_o_none(self.usuario_max_entry.get())
 
@@ -588,7 +603,7 @@ class BibliotecaApp(ctk.CTk):
     def eliminar_usuario_ui(self) -> None:
         """Maneja baja de usuario por ID."""
         try:
-            id_usuario = int(self.usuario_id_entry.get().strip())
+            id_usuario = self._validar_id(self.usuario_id_entry.get())
             self.crud.eliminar_usuario(id_usuario)
             self._sincronizar_referencias()
             self._refrescar_todo()
@@ -605,8 +620,8 @@ class BibliotecaApp(ctk.CTk):
         """Ejecuta logica de prestamo con validaciones criticas."""
         try:
             self._sincronizar_referencias()
-            id_libro = int(self.prestamo_libro_entry.get().strip())
-            id_usuario = int(self.prestamo_usuario_entry.get().strip())
+            id_libro = self._validar_id(self.prestamo_libro_entry.get())
+            id_usuario = self._validar_id(self.prestamo_usuario_entry.get())
             fecha_prestamo = self._parsear_fecha(self.fecha_prestamo_entry.get())
 
             self.prestamos.prestar_libro(id_libro, id_usuario, fecha_prestamo)
@@ -621,7 +636,7 @@ class BibliotecaApp(ctk.CTk):
         """Ejecuta devolucion y valida fecha de devolucion."""
         try:
             self._sincronizar_referencias()
-            id_libro = int(self.prestamo_libro_entry.get().strip())
+            id_libro = self._validar_id(self.prestamo_libro_entry.get())
             fecha_devolucion = self._parsear_fecha(self.fecha_devolucion_entry.get())
 
             self.prestamos.devolver_libro(id_libro, fecha_devolucion)
@@ -636,7 +651,7 @@ class BibliotecaApp(ctk.CTk):
         """Muestra el estado vigente de un libro especifico."""
         try:
             self._sincronizar_referencias()
-            id_libro = int(self.prestamo_libro_entry.get().strip())
+            id_libro = self._validar_id(self.prestamo_libro_entry.get())
             estado = self.prestamos.estado_actual_libro(id_libro)
             self._set_estado(f"Estado del libro {id_libro}: {estado}")
             messagebox.showinfo("Estado actual", f"Libro {id_libro}: {estado}")
