@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "titulo": "Investigación del hombre Primitivo",
+    "autor": "Anonimo",
+    "anio": 2007,
+    "estado": "prestado"
+  },
+  {
+    "id": 2,
+    "titulo": "Investigación del hombre comteporaneo",
+    "autor": "Anonimo",
+    "anio": 2007,
+    "estado": "prestado"
+  }
+]

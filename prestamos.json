@@ -1,0 +1,14 @@
+[
+  {
+    "id_libro": 1,
+    "id_usuario": 253385,
+    "fecha_prestamo": "2026-03-14",
+    "fecha_devolucion": null
+  },
+  {
+    "id_libro": 2,
+    "id_usuario": 253385,
+    "fecha_prestamo": "2026-03-14",
+    "fecha_devolucion": null
+  }
+]
